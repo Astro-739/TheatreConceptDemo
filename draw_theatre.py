@@ -26,9 +26,11 @@ def draw_theatre(theatre:Theatre,helper_boxes:bool) -> None:
     fig,axes = plt.subplots(1,1,figsize=(10, 10))
     plt.xlim([0,theatre.MAPWIDTH])
     plt.ylim([0,theatre.MAPHEIGHT])
+    
     # draw helper boxes
     if helper_boxes:
         draw_helper_boxes(theatre)
+    
     # draw units on map
     # blue vehicles
     for vehicle in theatre.blue_vehicles:
@@ -66,75 +68,80 @@ def draw_theatre(theatre:Theatre,helper_boxes:bool) -> None:
     red_values = ([unit.value for unit in theatre.red_all])
     
     # convex hull
-    blue_hull = MultiPoint(blue_points).convex_hull
-    red_hull = MultiPoint(red_points).convex_hull
-    x,y = blue_hull.exterior.xy
+    blue_hull_poly = MultiPoint(blue_points).convex_hull
+    red_hull_poly = MultiPoint(red_points).convex_hull
+    x,y = blue_hull_poly.exterior.xy
     plt.plot(x,y,"b--",lw=0.5)
-    x,y = red_hull.exterior.xy
+    x,y = red_hull_poly.exterior.xy
     plt.plot(x,y,"r--",lw=0.5)
     
     # centroid points
-    blue_centroid = blue_hull.centroid
-    red_centroid = red_hull.centroid
+    blue_centroid = blue_hull_poly.centroid
+    red_centroid = red_hull_poly.centroid
     plt.scatter(blue_centroid.x,blue_centroid.y,color="purple",s=200,marker="*")
     plt.scatter(red_centroid.x,red_centroid.y,color="purple",s=200,marker="*")
     
     # centre of gravity points
+    # blue
     blue_cg_x = sum([point[0] for point in blue_points]) / len(blue_points)
     blue_cg_y = sum([point[1] for point in blue_points]) / len(blue_points)        
     print("blue_cg: ",(blue_cg_x,blue_cg_y))
     plt.scatter(blue_cg_x,blue_cg_y,color="blue",s=200,marker="*")
-
-    blue_wcg_x = sum([unit.location[0]*unit.value for unit in theatre.blue_all]) / sum(blue_values)
-    blue_wcg_y = sum([unit.location[1]*unit.value for unit in theatre.blue_all]) / sum(blue_values)
-    print("blue weighted cg: ",(blue_wcg_x,blue_wcg_y))
-    plt.scatter(blue_wcg_x,blue_wcg_y,color="blue",s=200,marker="*")
-    
+    # red
     red_cg_x = sum([point[0] for point in red_points]) / len(red_points)
     red_cg_y = sum([point[1] for point in red_points]) / len(red_points)        
     print("red_cg: ",(red_cg_x,red_cg_y))
     plt.scatter(red_cg_x,red_cg_y,color="red",s=200,marker="*")
-    
+
+    # weighted centre of gravity points
+    # blue
+    blue_wcg_x = sum([unit.location[0]*unit.value for unit in theatre.blue_all]) / sum(blue_values)
+    blue_wcg_y = sum([unit.location[1]*unit.value for unit in theatre.blue_all]) / sum(blue_values)
+    print("blue weighted cg: ",(blue_wcg_x,blue_wcg_y))
+    plt.scatter(blue_wcg_x,blue_wcg_y,color="blue",s=200,marker="*")
+    # red
     red_wcg_x = sum([unit.location[0]*unit.value for unit in theatre.red_all]) / sum(red_values)
     red_wcg_y = sum([unit.location[1]*unit.value for unit in theatre.red_all]) / sum(red_values)
     print("blue weighted cg: ",(blue_wcg_x,blue_wcg_y))
     plt.scatter(red_wcg_x,red_wcg_y,color="red",s=200,marker="*")
     
     # connecting cgs
-    plt.plot((blue_cg_x,red_cg_x),(blue_cg_y,red_cg_y),color="black",linestyle="dashed",lw=0.5)
+    #plt.plot((blue_cg_x,red_cg_x),(blue_cg_y,red_cg_y),color="black",linestyle="dashed",lw=0.5)
 
-    # intersection
-    line = LineString([(blue_cg_x,blue_cg_y),(red_cg_x,red_cg_y)])
-    intersection = blue_hull.intersection(line)
+    # connecting cgs
+    cg_line = LineString([(blue_cg_x,blue_cg_y),(red_cg_x,red_cg_y)])
+    intersection = blue_hull_poly.intersection(cg_line)
     ic(intersection)
-    line2 = affinity.scale(line,3.0,3.0,1.0,"center")
-    intersection2 = blue_hull.intersection(line2)
+    cg_line_ext = affinity.scale(cg_line,3.0,3.0,1.0,"center")
+    intersection2 = blue_hull_poly.intersection(cg_line_ext)
     ic(intersection2)
     coords = list(intersection2.coords)
     ic(coords)
-    x,y = line2.xy
-    plt.plot(x,y)
+    x,y = cg_line_ext.xy
+    plt.plot(x,y,color="black",linestyle="dashed",lw=0.5)
 
-    test = split(blue_hull,line2)    # multigeometry
-    ic(test)
-    test1 = test.geoms[0]   # polygon
-    ic(test1)
-    x,y = test1.exterior.xy
+    # split blue area
+    blue_hull_multi = split(blue_hull_poly,cg_line_ext)    # multigeometry
+    ic(blue_hull_multi)
+    blue_hull_1_poly = blue_hull_multi.geoms[0]   # polygon
+    ic(blue_hull_1_poly)
+    x,y = blue_hull_1_poly.exterior.xy
     plt.plot(x,y)
-    test2 = test.geoms[1]   # polygon
-    ic(test2)
-    x,y = test2.exterior.xy
+    blue_hull_2_poly = blue_hull_multi.geoms[1]   # polygon
+    ic(blue_hull_2_poly)
+    x,y = blue_hull_2_poly.exterior.xy
     plt.plot(x,y)
-
-    test = split(red_hull,line2)    # multigeometry
-    ic(test)
-    test1 = test.geoms[0]   # polygon
-    ic(test1)
-    x,y = test1.exterior.xy
+    
+    # split red area
+    red_hull_multi = split(red_hull_poly,cg_line_ext)    # multigeometry
+    ic(red_hull_multi)
+    red_hull_1_poly = red_hull_multi.geoms[0]   # polygon
+    ic(red_hull_1_poly)
+    x,y = red_hull_1_poly.exterior.xy
     plt.plot(x,y)
-    test2 = test.geoms[1]   # polygon
-    ic(test2)
-    x,y = test2.exterior.xy
+    red_hull_2_poly = red_hull_multi.geoms[1]   # polygon
+    ic(red_hull_2_poly)
+    x,y = red_hull_2_poly.exterior.xy
     plt.plot(x,y)
 
 

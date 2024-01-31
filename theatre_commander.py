@@ -16,4 +16,3 @@ class TheatreCommander:
         self.priority = 1
         
         
-        pass
